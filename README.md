@@ -4,12 +4,17 @@
 real [Cricsheet](https://cricsheet.org) ball-by-ball data — broadcast night-match aesthetic,
 honest provenance, and drill-to-delivery everywhere.
 
-## Quick start
+## Setup
+
+### Run locally
 
 ```bash
 npm install
 npm run dev        # site on http://localhost:5173 (data is pre-processed & committed)
 ```
+
+Requires Node 20.19+ (Node 22 recommended — Vite 8). The processed data is committed, so
+`npm run dev` works immediately with no data step.
 
 To refresh the dataset (downloads the latest Cricsheet zip, keeps the 45 most recent matches,
 rebuilds every aggregate):
@@ -19,7 +24,23 @@ npm run data       # = python3 scripts/fetch_data.py && python3 scripts/etl.py
 ```
 
 `scripts/fetch_data.py --league ipl|bbl|psl|t20is|recent --count N` picks the source.
-Requires Python 3.9+ (stdlib only) and Node 18+.
+The data step additionally requires Python 3.9+ (standard library only).
+
+### Deployment (Netlify)
+
+Static build, hosted on Netlify. Configuration lives in [`netlify.toml`](netlify.toml):
+
+| Setting | Value |
+|---|---|
+| Build command | `npm run build` (`tsc -b && vite build`) |
+| Publish directory | `dist` |
+| Node version | `22` (pinned via `NODE_VERSION`) |
+
+`npm run build` type-checks and bundles into `dist/`, and Vite copies `public/` — including the
+pre-processed Cricsheet JSON under `public/data/processed/` — into `dist/`, so the deployed site
+is fully self-contained with **no runtime API calls or backend**. There is no data step in the
+Netlify build; the committed processed JSON ships as-is. To deploy, connect the repo to Netlify
+(it reads `netlify.toml` automatically) or run `npx netlify deploy --prod` from a local build.
 
 ## What's inside
 
