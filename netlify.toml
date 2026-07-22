@@ -1,0 +1,20 @@
+# Netlify build config for CricLens (Vite + React + TS static build).
+#
+# The app is a single-page, no-router scroll site: `npm run build` type-checks
+# and bundles into dist/, and Vite copies public/ (including the pre-processed
+# Cricsheet JSON under public/data/processed) into dist/, so the deployed site
+# is fully self-contained with no runtime API calls.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Vite 8 requires Node 20.19+/22.12+; pin 22 to match local development.
+  NODE_VERSION = "22"
+
+# Long-cache the fingerprinted build assets (filenames change on each build).
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
