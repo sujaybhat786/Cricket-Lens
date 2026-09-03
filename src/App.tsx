@@ -49,7 +49,14 @@ export default function App() {
       </div>
     );
 
-  if (!meta) return <div style={{ padding: 60, fontFamily: "var(--font-mono)", color: "var(--ink-3)" }}>loading CricLens…</div>;
+  if (!meta)
+    return (
+      <div className="boot">
+        <div className="boot-mark">CRIC<em>LENS</em></div>
+        <div className="boot-bar"><i /></div>
+        <div className="boot-note">loading ball-by-ball data</div>
+      </div>
+    );
 
   return (
     <>
