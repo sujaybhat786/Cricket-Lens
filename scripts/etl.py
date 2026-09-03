@@ -638,8 +638,114 @@ def main():
             "chaseWinPct": round(100 * v["chaseWins"] / v["results"], 0) if v["results"] else None,
             "spinEcon": round(6 * v["spinRuns"] / v["spinBalls"], 2) if v["spinBalls"] else None,
             "paceEcon": round(6 * v["paceRuns"] / v["paceBalls"], 2) if v["paceBalls"] else None,
+            "spinBalls": v["spinBalls"], "paceBalls": v["paceBalls"],
         })
     venue_list.sort(key=lambda v: -v["matches"])
+
+
+    # ---------------- key moments + pre-match reports (DERIVED)
+    # Both are attached to each match bundle in a second pass, because the
+    # pre-match report needs the venue profiles computed above.
+    venue_by_name = {v["name"]: v for v in venue_list}
+
+    def describe_ball(d):
+        if d["wk"]:
+            return f"WICKET - {d['wk']['out']} {d['wk']['kind']}"
+        if d["ek"] == "wides":
+            return "wide"
+        if d["ek"] == "noballs":
+            return f"no-ball, {d['rb']} off the bat"
+        if d["rb"] >= 6:
+            return "SIX"
+        if d["rb"] >= 4:
+            return "FOUR"
+        if d["rt"] == 0:
+            return "dot ball"
+        return f"{d['rt']} run" + ("s" if d["rt"] > 1 else "")
+
+    def key_moments(match, n=8):
+        """Top-N deliveries by absolute win-probability swing, max one per over.
+        Reuses the same per-ball win probability the worm already renders."""
+        cands = []
+        for ii, inn in enumerate(match["innings"]):
+            prev = None
+            for d in inn["deliveries"]:
+                if prev is not None:
+                    cands.append({
+                        "inn": ii, "team": inn["team"], "ov": d["ov"], "b": d["b"],
+                        "swing": round(abs(d["wp"] - prev), 4), "wpFrom": prev, "wpTo": d["wp"],
+                        "bat": d["bat"], "bwl": d["bwl"], "rb": d["rb"], "rt": d["rt"],
+                        "wk": d["wk"], "score": f"{d['cr']}/{d['cw']}",
+                        "desc": describe_ball(d),
+                    })
+                prev = d["wp"]
+        cands.sort(key=lambda x: -x["swing"])
+        picked, seen = [], set()
+        for c in cands:
+            k = (c["inn"], c["ov"])
+            if k in seen:
+                continue
+            seen.add(k)
+            picked.append(c)
+            if len(picked) == n:
+                break
+        return picked
+
+    # per-(batter,bowler,match) tallies so battles can exclude the previewed match
+    pair_by_match = defaultdict(lambda: defaultdict(lambda: {"runs": 0, "balls": 0, "outs": 0}))
+    for m in matches:
+        for inn in m["innings"]:
+            for d in inn["deliveries"]:
+                c = pair_by_match[(d["bat"], d["bwl"])][m["id"]]
+                c["runs"] += d["rb"]
+                if d["ek"] != "wides":
+                    c["balls"] += 1
+                if d["wk"] and d["wk"]["out"] == d["bat"] and d["wk"]["kind"] not in (
+                        "run out", "retired hurt", "retired out", "obstructing the field"):
+                    c["outs"] += 1
+
+    for m in matches:
+        a, b = m["info"]["teams"][0], m["info"]["teams"][1]
+        prior = [x for x in matches
+                 if x["id"] != m["id"] and set(x["info"]["teams"]) == {a, b}]
+        h2h = {
+            "played": len(prior),
+            "wins": {a: sum(1 for x in prior if x["info"]["winner"] == a),
+                     b: sum(1 for x in prior if x["info"]["winner"] == b)},
+            "matches": [{"id": x["id"], "date": x["info"]["date"], "result": x["info"]["result"],
+                         "venue": x["info"]["venue"], "stage": x["info"].get("stage")}
+                        for x in sorted(prior, key=lambda x: x["info"]["date"], reverse=True)],
+        }
+        battles = []
+        for bat_team, bowl_team in ((a, b), (b, a)):
+            for bat in m["info"]["players"].get(bat_team, []):
+                for bwl in m["info"]["players"].get(bowl_team, []):
+                    per = pair_by_match.get((bat, bwl))
+                    if not per:
+                        continue
+                    # EXCLUDE the match being previewed so this reads as genuinely pre-toss
+                    runs = balls = outs = 0
+                    mids = 0
+                    for mid, c in per.items():
+                        if mid == m["id"]:
+                            continue
+                        runs += c["runs"]; balls += c["balls"]; outs += c["outs"]; mids += 1
+                    if balls >= 6:
+                        battles.append({
+                            "batter": bat, "batTeam": bat_team, "bowler": bwl, "bowlTeam": bowl_team,
+                            "runs": runs, "balls": balls, "outs": outs,
+                            "sr": round(100 * runs / balls) if balls else None,
+                            "matches": mids,
+                            "batHand": p_meta(bat)["bat"], "bowlType": p_meta(bwl)["bowl"],
+                        })
+        # rank by how lopsided the duel is: dismissals first, then distance from a par SR
+        battles.sort(key=lambda x: (-(x["outs"] * 30 + abs((x["sr"] or 0) - 130)), -x["balls"]))
+        m["keyMoments"] = key_moments(m)
+        m["preMatch"] = {"h2h": h2h,
+                         "venue": venue_by_name.get(m["info"]["venue"]),
+                         "battles": battles[:3]}
+        with open(os.path.join(OUT, "matches", f"{m['id']}.json"), "w") as f:
+            json.dump(m, f, separators=(",", ":"))
 
     meta = {
         "generated": True,
