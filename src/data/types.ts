@@ -55,6 +55,8 @@ export interface MatchInfo {
   firstTotal: number | null;
   target: number | null;
   targetBalls: number;
+  superOver?: boolean;
+  eliminator?: string | null;
 }
 
 /** Top win-probability-swing delivery, extracted at build time (DERIVED). */

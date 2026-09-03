@@ -323,7 +323,10 @@ def process_match(mid, m):
             "outcome": outcome,
             "result": result,
             "eliminator": outcome.get("eliminator"),
-            "superOver": len(m["innings"]) > 2,
+            # Multi-day formats have 4 innings by design; only a limited-overs
+            # match with >2 innings has been decided by a Super Over.
+            "superOver": len(m["innings"]) > 2
+                         and info.get("match_type") not in ("Test", "MDM"),
             "winner": outcome.get("winner"),
             "pom": (info.get("player_of_match") or [None])[0],
             "matchType": info.get("match_type", "T20"),

@@ -99,8 +99,10 @@ function MatchAutopsy({ match, lookup, filtered, innings }: {
   const replayCur = flatBalls[Math.min(replayIdx, flatBalls.length - 1)];
 
   // A Super Over adds 3rd/4th innings; label them so panels are not ambiguous.
+  // Only tag Super Over innings on limited-overs matches — a Test's 3rd and
+  // 4th innings are normal, not a shootout.
   const inningsLabel = (inn: Innings) =>
-    match.innings.indexOf(inn) > 1 ? `${inn.team} (Super Over)` : inn.team;
+    info.superOver && match.innings.indexOf(inn) > 1 ? `${inn.team} (Super Over)` : inn.team;
 
   const visibleInnings = useMemo(
     () => match.innings.filter((_, i) => innings === 0 || i === innings - 1),
