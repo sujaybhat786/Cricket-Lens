@@ -16,7 +16,7 @@
   /* ink */
   --ink: #eef2f7;
   --ink-2: #9fb0c3;
-  --ink-3: #6d7d92;   /* 4.61:1 on --bg; #5f6f83 failed WCAG AA at .stat-label size */
+  --ink-3: #78869c;   /* >=4.5:1 on page, panel and panel-solid surfaces (WCAG AA at 9.5px label sizes) */
 
   /* hero accent — data emphasis only */
   --accent: #00ff88;
