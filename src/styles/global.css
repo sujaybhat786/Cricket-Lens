@@ -545,3 +545,13 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   font-family: var(--font-mono); font-size: 10.5px;
   letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3);
 }
+
+/* WebKit gives <select> a wider intrinsic minimum than Blink, which pushed the
+   filter bar past the viewport on narrow screens in Safari. Let the groups wrap
+   and let the controls shrink. */
+.filter-group { flex-wrap: wrap; min-width: 0; }
+.filter-bar select.select,
+.filter-bar input.input { min-width: 0; max-width: 100%; }
+@media (max-width: 700px) {
+  .filter-bar select.select { flex: 1 1 140px; }
+}
