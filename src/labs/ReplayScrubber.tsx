@@ -11,7 +11,9 @@ export interface FlatBall { d: Delivery; innIdx: number; legal: number; within: 
 /** Chronological ball list across both innings, with a per-innings legal-ball count. */
 export function flattenBalls(match: Match): FlatBall[] {
   const out: FlatBall[] = [];
-  match.innings.forEach((inn, innIdx) => {
+  // Main innings only — a Super Over is a separate shootout and its balls would
+  // otherwise become the "end" of the replay with a nonsensical run rate.
+  match.innings.slice(0, 2).forEach((inn, innIdx) => {
     let legal = 0;
     inn.deliveries.forEach((d, within) => {
       if (d.ek !== "wides" && d.ek !== "noballs") legal += 1;

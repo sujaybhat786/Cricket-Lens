@@ -303,6 +303,10 @@ def process_match(mid, m):
             result += f" ({outcome['method']})"
     elif "result" in outcome:
         result = outcome["result"].title()
+        # A tie decided by a Super Over records the winner under "eliminator",
+        # not "winner" — without this the match reads as just "Tie".
+        if outcome.get("eliminator"):
+            result = f"Match tied — {outcome['eliminator']} won the Super Over"
 
     return {
         "id": mid,
@@ -318,6 +322,8 @@ def process_match(mid, m):
             "toss": info.get("toss", {}),
             "outcome": outcome,
             "result": result,
+            "eliminator": outcome.get("eliminator"),
+            "superOver": len(m["innings"]) > 2,
             "winner": outcome.get("winner"),
             "pom": (info.get("player_of_match") or [None])[0],
             "matchType": info.get("match_type", "T20"),
@@ -667,7 +673,9 @@ def main():
         """Top-N deliveries by absolute win-probability swing, max one per over.
         Reuses the same per-ball win probability the worm already renders."""
         cands = []
-        for ii, inn in enumerate(match["innings"]):
+        # Only the two main innings: a Super Over is a separate 1-over shootout,
+        # so the innings win-probability model does not apply to it.
+        for ii, inn in enumerate(match["innings"][:2]):
             prev = None
             for d in inn["deliveries"]:
                 if prev is not None:

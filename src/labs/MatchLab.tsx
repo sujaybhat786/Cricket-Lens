@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import type { Match, MatchIndexEntry } from "../data/types";
+import type { Innings, Match, MatchIndexEntry } from "../data/types";
 import { loadMatch } from "../data/api";
 import {
   filterBalls, isFiltering, extrasBreakdown, dismissalKinds, aggBatting, aggBowling, oversStr,
@@ -97,6 +97,10 @@ function MatchAutopsy({ match, lookup, filtered, innings }: {
     setActiveMoment(null);
   }, [flatBalls]);
   const replayCur = flatBalls[Math.min(replayIdx, flatBalls.length - 1)];
+
+  // A Super Over adds 3rd/4th innings; label them so panels are not ambiguous.
+  const inningsLabel = (inn: Innings) =>
+    match.innings.indexOf(inn) > 1 ? `${inn.team} (Super Over)` : inn.team;
 
   const visibleInnings = useMemo(
     () => match.innings.filter((_, i) => innings === 0 || i === innings - 1),
@@ -213,7 +217,7 @@ function MatchAutopsy({ match, lookup, filtered, innings }: {
         <Panel title="The Worm & Win Probability" tier="DERIVED" wide
           sub={`Cumulative runs with a ball-by-ball win-probability ribbon (logistic model over resources remaining). The green marker is the replay position. ${filtered ? "Note: worm always shows the full innings; filters apply to the other panels." : ""}`}
           insight={wormInsight}>
-          <Worm innings={match.innings} teams={info.teams} target={info.target}
+          <Worm innings={match.innings.slice(0, 2)} teams={info.teams} target={info.target}
             cursor={replayCur ? { innIdx: replayCur.innIdx, legal: replayCur.legal } : null} />
           <div style={{ marginTop: 18, paddingTop: 18, borderTop: "1px solid var(--line)" }}>
             <ReplayScrubber match={match} balls={flatBalls} idx={replayIdx}
@@ -269,13 +273,13 @@ function MatchAutopsy({ match, lookup, filtered, innings }: {
         </Panel>
 
         {visibleInnings.map((inn, i) => (
-          <Panel key={i} title={`Partnerships — ${inn.team}`} tier="RECORDED" sub="Each stand's runs (balls). Unbroken stands in green. Click for the deliveries.">
+          <Panel key={i} title={`Partnerships — ${inningsLabel(inn)}`} tier="RECORDED" sub="Each stand's runs (balls). Unbroken stands in green. Click for the deliveries.">
             <PartnershipFlow balls={inningsBalls[i]} team={inn.team} />
           </Panel>
         ))}
 
         {visibleInnings.map((inn, i) => (
-          <Panel key={`m${i}`} title={`Momentum — ${inn.team}`} tier="DERIVED"
+          <Panel key={`m${i}`} title={`Momentum — ${inningsLabel(inn)}`} tier="DERIVED"
             sub={i === 1 || (innings === 2 && match.innings.length > 1)
               ? "Rolling 12-ball run rate minus required rate."
               : "Rolling 12-ball run rate minus the innings' own average rate."}>
