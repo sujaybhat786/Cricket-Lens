@@ -20,7 +20,11 @@ interface Pt {
 }
 
 /** Dual worm + win-probability ribbon. Hover any ball for full detail. */
-export function Worm({ innings, teams, target }: { innings: Innings[]; teams: string[]; target: number | null }) {
+export function Worm({ innings, teams, target, cursor }: {
+  innings: Innings[]; teams: string[]; target: number | null;
+  /** Replay position: which innings and how many legal balls in. */
+  cursor?: { innIdx: number; legal: number } | null;
+}) {
   const { show, hide } = useTip();
   const openDrawer = useStore((s) => s.openDrawer);
   const reduced = useReducedMotion();
@@ -173,6 +177,25 @@ export function Worm({ innings, teams, target }: { innings: Innings[]; teams: st
           </text>
         ) : null;
       })}
+      {/* replay cursor */}
+      {cursor && (() => {
+        const s = series[cursor.innIdx];
+        if (!s?.length) return null;
+        let best = s[0];
+        for (const p of s) {
+          const li = Math.round(p.x * 6);
+          if (Math.abs(li - cursor.legal) < Math.abs(Math.round(best.x * 6) - cursor.legal)) best = p;
+        }
+        return (
+          <g pointerEvents="none">
+            <line x1={xs(best.x)} x2={xs(best.x)} y1={M.t} y2={H - M.b}
+              stroke="var(--accent)" strokeWidth={1.4} opacity={0.85} />
+            <circle cx={xs(best.x)} cy={ys(best.runs)} r={5.5} fill="var(--accent)"
+              stroke="#0a0e14" strokeWidth={1.6}
+              style={{ filter: "drop-shadow(0 0 8px var(--accent-glow))" }} />
+          </g>
+        );
+      })()}
       {/* crosshair */}
       {hover && (
         <g pointerEvents="none">

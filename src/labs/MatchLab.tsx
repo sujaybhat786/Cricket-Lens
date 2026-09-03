@@ -16,6 +16,9 @@ import { WagonWheel } from "../viz/WagonWheel";
 import { PitchMap } from "../viz/PitchMap";
 import { MatchupMatrix } from "../viz/MatchupMatrix";
 import { PartnershipFlow, MomentumChart, SpellsTimeline, Donut } from "../viz/SmallCharts";
+import { KeyMomentsReel } from "../viz/KeyMoments";
+import { PreMatchReport } from "./PreMatchReport";
+import { ReplayScrubber, flattenBalls } from "./ReplayScrubber";
 
 export function MatchLab({ index, lookup }: { index: MatchIndexEntry[]; lookup: PlayerLookup }) {
   const { matchId, setMatch, filters, innings } = useStore();
@@ -84,6 +87,16 @@ function MatchAutopsy({ match, lookup, filtered, innings }: {
 }) {
   const { filters, openDrawer } = useStore();
   const info = match.info;
+
+  // ---- replay scrubber state (parks at the end of the match on load) ----
+  const flatBalls = useMemo(() => flattenBalls(match), [match]);
+  const [replayIdx, setReplayIdx] = useState(flatBalls.length - 1);
+  const [activeMoment, setActiveMoment] = useState<number | null>(null);
+  useEffect(() => {
+    setReplayIdx(flatBalls.length - 1);
+    setActiveMoment(null);
+  }, [flatBalls]);
+  const replayCur = flatBalls[Math.min(replayIdx, flatBalls.length - 1)];
 
   const visibleInnings = useMemo(
     () => match.innings.filter((_, i) => innings === 0 || i === innings - 1),
@@ -192,11 +205,33 @@ function MatchAutopsy({ match, lookup, filtered, innings }: {
         </div>
       )}
 
+      <div className="grid" style={{ marginBottom: 18 }}>
+        <PreMatchReport match={match} />
+      </div>
+
       <div className="grid grid-2">
         <Panel title="The Worm & Win Probability" tier="DERIVED" wide
-          sub={`Cumulative runs with a ball-by-ball win-probability ribbon (logistic model over resources remaining). ${filtered ? "Note: worm always shows the full innings; filters apply to the other panels." : ""}`}
+          sub={`Cumulative runs with a ball-by-ball win-probability ribbon (logistic model over resources remaining). The green marker is the replay position. ${filtered ? "Note: worm always shows the full innings; filters apply to the other panels." : ""}`}
           insight={wormInsight}>
-          <Worm innings={match.innings} teams={info.teams} target={info.target} />
+          <Worm innings={match.innings} teams={info.teams} target={info.target}
+            cursor={replayCur ? { innIdx: replayCur.innIdx, legal: replayCur.legal } : null} />
+          <div style={{ marginTop: 18, paddingTop: 18, borderTop: "1px solid var(--line)" }}>
+            <ReplayScrubber match={match} balls={flatBalls} idx={replayIdx}
+              setIdx={(i) => { setReplayIdx(i); setActiveMoment(null); }} />
+          </div>
+        </Panel>
+
+        <Panel title="Key Moments Reel" tier="DERIVED" wide n={match.keyMoments?.length ?? 0} nUnit="moments"
+          sub="The deliveries that moved the win probability most, capped at one per over. Click any card to move the replay above to that ball."
+          insight={match.keyMoments?.length
+            ? `Biggest swing: over ${match.keyMoments[0].ov}.${match.keyMoments[0].b}, ${match.keyMoments[0].bwl} to ${match.keyMoments[0].bat} — ${match.keyMoments[0].desc.toLowerCase()}, worth ${(match.keyMoments[0].swing * 100).toFixed(0)} points of win probability.`
+            : null}>
+          <KeyMomentsReel moments={match.keyMoments ?? []} activeIdx={activeMoment}
+            onJump={(mo, i) => {
+              const target = flatBalls.findIndex(
+                (fb) => fb.innIdx === mo.inn && fb.d.ov === mo.ov && fb.d.b === mo.b);
+              if (target >= 0) { setReplayIdx(target); setActiveMoment(i); }
+            }} />
         </Panel>
 
         <Panel title="Manhattan" tier="RECORDED" wide sub="Runs per over · dots mark wickets · phase bands shaded. Click an over to see its deliveries.">
