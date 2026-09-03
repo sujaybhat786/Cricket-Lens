@@ -57,10 +57,55 @@ export interface MatchInfo {
   targetBalls: number;
 }
 
+/** Top win-probability-swing delivery, extracted at build time (DERIVED). */
+export interface KeyMoment {
+  inn: number;
+  team: string;
+  ov: number;
+  b: number;
+  swing: number;
+  wpFrom: number;
+  wpTo: number;
+  bat: string;
+  bwl: string;
+  rb: number;
+  rt: number;
+  wk: Wicket | null;
+  score: string;
+  desc: string;
+}
+
+/** Prior batter-vs-bowler record, EXCLUDING the match being previewed. */
+export interface Battle {
+  batter: string;
+  batTeam: string;
+  bowler: string;
+  bowlTeam: string;
+  runs: number;
+  balls: number;
+  outs: number;
+  sr: number | null;
+  matches: number;
+  batHand: string;
+  bowlType: string | null;
+}
+
+export interface PreMatch {
+  h2h: {
+    played: number;
+    wins: Record<string, number>;
+    matches: { id: string; date: string; result: string; venue: string; stage?: string | null }[];
+  };
+  venue: Venue | null;
+  battles: Battle[];
+}
+
 export interface Match {
   id: string;
   info: MatchInfo;
   innings: Innings[];
+  keyMoments: KeyMoment[];
+  preMatch: PreMatch;
 }
 
 export interface MatchIndexEntry {
@@ -200,6 +245,8 @@ export interface Venue {
   chaseWinPct: number | null;
   spinEcon: number | null;
   paceEcon: number | null;
+  spinBalls?: number;
+  paceBalls?: number;
 }
 
 export interface Meta {
